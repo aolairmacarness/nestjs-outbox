@@ -1,4 +1,4 @@
-import { text } from 'drizzle-orm/pg-core';
+import { integer, text } from 'drizzle-orm/pg-core';
 import { timestamp } from 'drizzle-orm/pg-core';
 import { pgEnum } from 'drizzle-orm/pg-core';
 import { primaryKey } from 'drizzle-orm/pg-core';
@@ -11,6 +11,11 @@ export const orders = pgTable('orders', {
   id: uuid('id').primaryKey().defaultRandom(),
   customerEmail: text('customer_email').notNull(),
   amount: numeric('amount').notNull(),
+  // Idempotency: the UNIQUE constraint is what makes concurrent duplicate
+  // requests safe. Nullable so rows created before this column existed stay
+  // valid (Postgres allows many NULLs under a UNIQUE constraint).
+  idempotencyKey: text('idempotency_key').unique(),
+  requestHash: text('request_hash'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
@@ -28,6 +33,7 @@ export const outbox = pgTable('outbox', {
   availableAt: timestamp('available_at').notNull().defaultNow(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   publishedAt: timestamp('published_at'),
+  retryCount: integer('retry_count').notNull().default(0),
   lastError: text('last_error'),
 });
 
